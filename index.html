@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Connect AI Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="text/javascript" src="connect-streams-min.js"></script>
+    <script src="https://github.com/amazon-connect/amazon-connect-streams/releases/download/v2.18.7/connect-streams-min.js"></script>
+</head>
+<body>
+    <!-- Configuration Screen -->
+    <div id="configScreen" class="config-screen">
+        <div class="config-panel">
+            <h2>🔧 Amazon Connect Configuration</h2>
+            <p>Enter your Amazon Connect instance details to get started:</p>
+            
+            <form id="configForm">
+                <div class="form-group">
+                    <label for="ccpUrl">CCP URL:</label>
+                    <input 
+                        type="url" 
+                        id="ccpUrl" 
+                        placeholder="https://your-instance-name.my.connect.aws/ccp-v2/"
+                        required
+                    >
+                    <small>Example: https://your-instance-name.my.connect.aws/ccp-v2/</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="region">AWS Region:</label>
+                    <select id="region">
+                        <option value="us-east-1">US East (N. Virginia)</option>
+                        <option value="us-west-2">US West (Oregon)</option>
+                        <option value="eu-west-1">Europe (Ireland)</option>
+                        <option value="ap-southeast-2">Asia Pacific (Sydney)</option>
+                        <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="allowFramedSoftphone" checked>
+                        Allow Framed Softphone
+                    </label>
+                </div>
+
+                <button type="submit" class="connect-button">
+                    🚀 Connect to Amazon Connect
+                </button>
+            </form>
+
+            <div class="help-section">
+                <h3>📋 Setup Instructions:</h3>
+                <ol>
+                    <li><strong>Configure Domain Allowlist in Amazon Connect:</strong>
+                        <ul>
+                            <li>Go to Amazon Connect Admin → Application integration</li>
+                            <li>Add your domain to the approved origins list</li>
+                            <li>Include: <code>http://localhost:*</code> for development</li>
+                            <li>Include your production domain for deployment</li>
+                        </ul>
+                    </li>
+                    <li><strong>Get your CCP URL:</strong> Copy from your Amazon Connect instance</li>
+                    <li><strong>Enter configuration:</strong> Paste CCP URL above and click "Connect"</li>
+                    <li><strong>Login:</strong> Log into the embedded CCP when it loads</li>
+                    <li><strong>Accept contacts:</strong> AI suggestions will appear automatically</li>
+                </ol>
+                <div class="info-box">
+                    <strong>🔧 Automatic Integration:</strong> This app embeds the real Amazon Connect CCP and monitors chat messages automatically for AI suggestions.
+                </div>
+                <div class="warning-box">
+                    <strong>⚠️ Important:</strong> If you get CSP errors, ensure your domain is added to the Amazon Connect approved origins list in the admin console.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="main-app" style="display: none;">
+        <!-- Amazon Connect CCP Container -->
+        <div class="ccp-container">
+            <div id="ccpContainer" class="ccp-iframe-container"></div>
+            <div id="loadingScreen" class="loading-screen">
+                <div class="loading-icon">🔗</div>
+                <div class="loading-title">Loading Amazon Connect CCP...</div>
+                <div class="loading-subtitle" id="loadingSubtitle">Connecting...</div>
+                <div class="loading-note">Embedding CCP automatically...</div>
+            </div>
+        </div>
+
+        <!-- AI Suggestions Panel -->
+        <div class="ai-panel">
+            <div class="ai-header">
+                <div class="ai-info">
+                    <div class="ai-icon">🤖</div>
+                    <div>
+                        <h2 class="ai-title">AI Assistant</h2>
+                        <p class="ai-subtitle">Real-time customer support suggestions</p>
+                    </div>
+                </div>
+                <button id="configButton" class="config-button">⚙️ Config</button>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="status-section">
+                <div class="status-item">
+                    <span class="status-label">Agent:</span>
+                    <span class="status-value" id="agentStatus">Initializing...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Contact:</span>
+                    <span class="status-value" id="contactStatus">No active contact</span>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-container">
+                <div class="stat-card messages">
+                    <div class="stat-number" id="messageCount">0</div>
+                    <div class="stat-label">Messages Processed</div>
+                </div>
+                <div class="stat-card status">
+                    <div class="stat-number" id="connectionStatus">⏳</div>
+                    <div class="stat-label" id="connectionLabel">Connecting</div>
+                </div>
+            </div>
+
+            <!-- Last Message -->
+            <div id="messageSection" class="message-section" style="display: none;">
+                <h4 class="section-title">📨 Latest Customer Message:</h4>
+                <div class="message-display" id="lastMessage"></div>
+            </div>
+
+            <!-- AI Suggestion -->
+            <div class="suggestion-container">
+                <h4 class="section-title">💡 AI Suggestion:</h4>
+                <div class="suggestion-display" id="aiSuggestion">
+                    🎯 Ready to provide AI suggestions for customer messages
+                </div>
+            </div>
+
+            <!-- Manual Message Input -->
+            <div class="manual-input-section">
+                <h4 class="section-title">📝 Manual Message Input:</h4>
+                <div class="input-group">
+                    <textarea
+                        id="manualMessage"
+                        placeholder="Paste customer message here from your CCP..."
+                        class="message-input"
+                        rows="3"
+                    ></textarea>
+                    <button id="processButton" class="process-button">
+                        🤖 Get AI Suggestion
+                    </button>
+                </div>
+            </div>
+
+            <!-- Test Button -->
+            <button id="testButton" class="test-button">
+                🎯 Try Random Test Message
+            </button>
+
+            <!-- System Status -->
+            <div class="status-panel">
+                <h4 class="status-title">🟢 System Status:</h4>
+                <ul class="status-list" id="systemStatus">
+                    <li id="ccpStatus">⏳ Amazon Connect CCP</li>
+                    <li>✅ AI API connected</li>
+                    <li>✅ Real-time processing ready</li>
+                    <li id="monitoringStatus">✅ Chat monitoring active</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="app.js"></script>
+</body>
+</html>
